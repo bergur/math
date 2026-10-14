@@ -1,15 +1,15 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref } from 'vue'
-import { TABLE_COLORS, questionsInOrder, questionsRandom, type Level } from './tables.ts'
+import { TABLE_COLORS, questionsRandom } from './tables.ts'
 
-const props = defineProps<{ table: number; level: Level }>()
+const props = defineProps<{ table: number }>()
 const emit = defineEmits<{ finished: [] }>()
 
 // The answer is at most 100, so three digits is enough.
 const MAX_DIGITS = 3
 const NEXT_QUESTION_DELAY_MS = 800
 
-const questions = props.level === 1 ? questionsInOrder(props.table) : questionsRandom(props.table)
+const questions = questionsRandom(props.table)
 const index = ref(0)
 const answer = ref('')
 const feedback = ref<'right' | 'wrong' | null>(null)

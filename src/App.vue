@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, nextTick, ref } from 'vue'
 import Quiz from './Quiz.vue'
-import { SECRET_CODES, TABLES, TABLE_ANIMALS, TABLE_COLORS, isCodeFor, type Level } from './tables.ts'
+import { SECRET_CODES, TABLES, TABLE_ANIMALS, TABLE_COLORS, isCodeFor } from './tables.ts'
 
 const LAST_TABLE = TABLES[TABLES.length - 1]
 const CONFETTI = ['⭐', '🎉', '🌈', '💖', '✨', '🎈', '🍭']
@@ -9,9 +9,8 @@ const CONFETTI = ['⭐', '🎉', '🌈', '💖', '✨', '🎈', '🍭']
 // Opened tables are only remembered until the page is reloaded, so she uses her written list of codes.
 const unlocked = ref(new Set([1]))
 const table = ref<number | null>(null)
-const level = ref<Level | null>(null)
 const isFinished = ref(false)
-// Bumped on "Play again", so the quiz starts over with new questions.
+// Bumped on opening a table and on "Play again", so the quiz starts over with new questions.
 const attempt = ref(0)
 // Only used on narrow screens, where the list of tables is a slide-in menu.
 const isMenuOpen = ref(false)
@@ -36,12 +35,11 @@ function openTable(chosen: number) {
   isMenuOpen.value = false
   if (!unlocked.value.has(chosen)) return openCodePopup(chosen)
   table.value = chosen
-  level.value = null
   isFinished.value = false
+  attempt.value++
 }
 
-function startLevel(chosen: Level) {
-  level.value = chosen
+function playAgain() {
   isFinished.value = false
   attempt.value++
 }
@@ -111,7 +109,7 @@ async function submitCode() {
         <button class="btn mt-6 border-violet-600 bg-violet-400 md:hidden" @click="isMenuOpen = true">Show tables</button>
       </div>
 
-      <!-- Finished a level. -->
+      <!-- Finished a table. -->
       <div v-else-if="isFinished" class="flex flex-col items-center text-center">
         <div class="pointer-events-none fixed inset-0 overflow-hidden" aria-hidden="true">
           <span
@@ -124,13 +122,9 @@ async function submitCode() {
 
         <p class="animate-pop text-8xl">🏆</p>
         <h1 class="mt-4 text-4xl font-extrabold md:text-5xl">You did it!</h1>
-        <p class="mt-2 text-2xl">Level {{ level }} of the table of {{ table }} is done!</p>
+        <p class="mt-2 text-2xl">The table of {{ table }} is done!</p>
 
-        <template v-if="level === 1">
-          <button class="btn mt-8 text-2xl" :class="colors!.button" @click="startLevel(2)">Go to level 2 ▶</button>
-        </template>
-
-        <template v-else-if="nextTable">
+        <template v-if="nextTable">
           <div class="mt-8 w-full max-w-sm rounded-3xl bg-white p-6 shadow-lg">
             <p class="text-xl">Your secret code for the <strong>table of {{ nextTable }}</strong> is:</p>
             <p class="my-4 font-mono text-5xl font-extrabold tracking-[0.3em]" :class="colors!.text">{{ SECRET_CODES[nextTable] }}</p>
@@ -143,31 +137,11 @@ async function submitCode() {
 
         <p v-else class="mt-8 text-3xl font-extrabold text-violet-500">🌟 You know ALL the tables! 🌟</p>
 
-        <button class="btn mt-4 border-slate-500 bg-slate-400" @click="startLevel(level!)">🔁 Play again</button>
+        <button class="btn mt-4 border-slate-500 bg-slate-400" @click="playAgain">🔁 Play again</button>
       </div>
 
-      <!-- Playing a level. -->
-      <div v-else-if="level">
-        <div class="mb-5 flex items-center justify-between gap-3">
-          <button class="btn border-slate-500 bg-slate-400 px-4 py-1.5 text-lg" @click="level = null">◀ Back</button>
-          <span class="rounded-full px-4 py-1 text-lg font-bold" :class="colors!.soft">Level {{ level }}</span>
-        </div>
-        <Quiz :key="`${table}-${level}-${attempt}`" :table="table" :level="level" @finished="isFinished = true" />
-      </div>
-
-      <!-- Picked a table, choosing a level. -->
-      <div v-else class="flex flex-col items-center text-center">
-        <p class="animate-pop text-8xl">{{ TABLE_ANIMALS[table] }}</p>
-        <h1 class="mt-2 text-5xl font-extrabold">Table of <span :class="colors!.text">{{ table }}</span></h1>
-        <div class="mt-8 flex w-full max-w-sm flex-col gap-4">
-          <button class="btn py-5 text-2xl" :class="colors!.button" @click="startLevel(1)">
-            Level 1<br /><span class="text-lg font-semibold">{{ table }} × 1, {{ table }} × 2, {{ table }} × 3…</span>
-          </button>
-          <button class="btn py-5 text-2xl" :class="colors!.button" @click="startLevel(2)">
-            Level 2<br /><span class="text-lg font-semibold">Mixed up! 🎲</span>
-          </button>
-        </div>
-      </div>
+      <!-- Playing a table. -->
+      <Quiz v-else :key="`${table}-${attempt}`" :table="table" @finished="isFinished = true" />
     </main>
 
     <!-- Secret code popup for a locked table. -->
@@ -198,7 +172,7 @@ async function submitCode() {
           <button type="button" class="btn flex-1 border-slate-500 bg-slate-400" @click="closeCodePopup">Close</button>
           <button type="submit" class="btn flex-1 border-emerald-700 bg-emerald-500" :disabled="codeInput.trim().length < 5">Open</button>
         </div>
-        <p class="mt-4 text-sm text-muted">Finish level 2 of the table of {{ codeTable - 1 }} to get the code.</p>
+        <p class="mt-4 text-sm text-muted">Finish the table of {{ codeTable - 1 }} to get the code.</p>
       </form>
     </div>
   </div>

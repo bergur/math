@@ -1,7 +1,7 @@
 export const TABLES = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
 export const RANDOM_QUESTION_COUNT = 15
 
-// The code that opens each table, shown after finishing level 2 of the table before it.
+// The code that opens each table, shown after finishing the table before it.
 // Hardcoded so they can be written down on paper. Table 1 is always open.
 export const SECRET_CODES: Record<number, string> = {
   2: 'TJDNA',
@@ -33,15 +33,9 @@ export const TABLE_ANIMALS: Record<number, string> = {
   1: '🐣', 2: '🐶', 3: '🐱', 4: '🐸', 5: '🦊', 6: '🐼', 7: '🦁', 8: '🐙', 9: '🦄', 10: '🐲',
 }
 
-export type Level = 1 | 2
 export type Question = { table: number; times: number }
 
-// Level 1: the table in order, table × 1 … table × 10.
-export function questionsInOrder(table: number): Question[] {
-  return TABLES.map((times) => ({ table, times }))
-}
-
-// Level 2: random questions, but every number 1–10 is asked at least once.
+// Random questions, but every number 1–10 is asked at least once.
 // The ten numbers go in first, the rest are random picks, then everything is shuffled.
 export function questionsRandom(table: number): Question[] {
   const numbers = [...TABLES]
