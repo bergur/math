@@ -7,6 +7,8 @@ services:
     buildCommand: npm ci --include=dev && npm run build
     startCommand: npm run serve
     healthCheckPath: /health
+    domains:
+      - math.soleybergs.is
     envVars:
       # Only keeps casual visitors out, so it's fine in cleartext here.
       - key: SITE_PASSWORD
