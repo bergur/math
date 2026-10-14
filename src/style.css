@@ -1,0 +1,38 @@
+@import 'tailwindcss';
+
+@theme {
+  /* The layout switches from the slide-in menu to the sidebar above 720px. */
+  --breakpoint-md: 45rem;
+
+  /* Big, round and friendly. Loaded from Google Fonts in index.html and login.html. */
+  --font-sans: 'Baloo 2', ui-rounded, system-ui, sans-serif;
+
+  --color-page: #fff7e6;
+  --color-ink: #3b2a5c;
+  --color-muted: #8a7aa8;
+
+  --animate-wiggle: wiggle 0.4s ease-in-out;
+  --animate-pop: pop 0.35s ease-out;
+  --animate-fall: fall 2.4s linear forwards;
+
+  @keyframes wiggle {
+    0%, 100% { transform: translateX(0); }
+    25% { transform: translateX(-10px); }
+    75% { transform: translateX(10px); }
+  }
+  @keyframes pop {
+    0% { transform: scale(0.6); opacity: 0; }
+    70% { transform: scale(1.1); opacity: 1; }
+    100% { transform: scale(1); }
+  }
+  @keyframes fall {
+    0% { transform: translateY(-10vh) rotate(0deg); opacity: 1; }
+    100% { transform: translateY(110vh) rotate(540deg); opacity: 0.8; }
+  }
+}
+
+@layer components {
+  .btn {
+    @apply cursor-pointer rounded-2xl border-b-4 px-5 py-2.5 text-xl font-bold text-white transition-transform active:translate-y-0.5 active:border-b-2 disabled:cursor-default disabled:opacity-40;
+  }
+}

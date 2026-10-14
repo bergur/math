@@ -1,0 +1,13 @@
+services:
+  - type: web
+    name: math
+    runtime: node
+    plan: free
+    region: frankfurt
+    buildCommand: npm ci --include=dev && npm run build
+    startCommand: npm run serve
+    healthCheckPath: /health
+    envVars:
+      # Only keeps casual visitors out, so it's fine in cleartext here.
+      - key: SITE_PASSWORD
+        value: MammaBesta
