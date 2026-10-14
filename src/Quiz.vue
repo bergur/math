@@ -1,52 +1,62 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref } from 'vue'
-import { TABLE_COLORS, questionsRandom } from './tables.ts'
+import { TABLE_COLORS, formatTime, questionsRandom } from './tables.ts'
 
-const props = defineProps<{ table: number }>()
-const emit = defineEmits<{ finished: [] }>()
+const props = defineProps<{ table: number; isTimed: boolean }>()
+const emit = defineEmits<{ finished: [elapsedMs: number] }>()
 
 // The answer is at most 100, so three digits is enough.
 const MAX_DIGITS = 3
-const NEXT_QUESTION_DELAY_MS = 800
+const CLOCK_TICK_MS = 100
 
 const questions = questionsRandom(props.table)
 const index = ref(0)
 const answer = ref('')
-const feedback = ref<'right' | 'wrong' | null>(null)
+const isWrong = ref(false)
 // Bumped on every wrong answer, so the wiggle plays again even after two wrong answers in a row.
 const wrongCount = ref(0)
 
 const question = computed(() => questions[index.value])
 const colors = computed(() => TABLE_COLORS[props.table])
 
+// Timed mode: the clock runs from the first question until the last one is answered right.
+const startedAt = Date.now()
+const elapsedMs = ref(0)
+let clock: number | undefined
+
+function stopClock() {
+  clearInterval(clock)
+  elapsedMs.value = Date.now() - startedAt
+}
+
 function press(digit: string) {
-  if (feedback.value === 'right' || answer.value.length >= MAX_DIGITS) return
-  feedback.value = null
+  if (answer.value.length >= MAX_DIGITS) return
+  isWrong.value = false
   answer.value += digit
 }
 
 function erase() {
-  if (feedback.value === 'right') return
-  feedback.value = null
+  isWrong.value = false
   answer.value = answer.value.slice(0, -1)
 }
 
 // A wrong answer is cleared so she can try again; the question only moves on when it's right.
 function check() {
-  if (answer.value === '' || feedback.value === 'right') return
+  if (answer.value === '') return
   if (Number(answer.value) !== question.value.table * question.value.times) {
-    feedback.value = 'wrong'
+    isWrong.value = true
     wrongCount.value++
     answer.value = ''
     return
   }
-  feedback.value = 'right'
-  setTimeout(() => {
-    if (index.value === questions.length - 1) return emit('finished')
-    index.value++
-    answer.value = ''
-    feedback.value = null
-  }, NEXT_QUESTION_DELAY_MS)
+  // A right answer moves straight on to the next question.
+  if (index.value === questions.length - 1) {
+    stopClock()
+    return emit('finished', elapsedMs.value)
+  }
+  index.value++
+  answer.value = ''
+  isWrong.value = false
 }
 
 function onKeydown(event: KeyboardEvent) {
@@ -55,19 +65,29 @@ function onKeydown(event: KeyboardEvent) {
   else if (event.key === 'Enter') check()
 }
 
-onMounted(() => window.addEventListener('keydown', onKeydown))
-onUnmounted(() => window.removeEventListener('keydown', onKeydown))
+onMounted(() => {
+  window.addEventListener('keydown', onKeydown)
+  if (props.isTimed) clock = window.setInterval(() => (elapsedMs.value = Date.now() - startedAt), CLOCK_TICK_MS)
+})
+onUnmounted(() => {
+  window.removeEventListener('keydown', onKeydown)
+  clearInterval(clock)
+})
 </script>
 
 <template>
   <div class="mx-auto flex w-full max-w-md flex-col items-center gap-5">
+    <p v-if="isTimed" class="rounded-full bg-white px-5 py-1 font-mono text-3xl font-extrabold tabular-nums shadow-sm" :class="colors.text">
+      ⏱️ {{ formatTime(elapsedMs) }}
+    </p>
+
     <!-- One dot per question: filled when answered. -->
     <div class="flex flex-wrap justify-center gap-1.5">
       <span
         v-for="(_, dot) in questions"
         :key="dot"
         class="size-4 rounded-full transition-colors"
-        :class="dot < index || (dot === index && feedback === 'right') ? colors.fill : 'bg-white ring-2 ring-black/10'"
+        :class="dot < index ? colors.fill : 'bg-white ring-2 ring-black/10'"
       ></span>
     </div>
 
@@ -76,7 +96,7 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
       <div
         :key="wrongCount"
         class="rounded-3xl bg-white p-6 text-center shadow-lg"
-        :class="{ 'animate-wiggle': feedback === 'wrong' }"
+        :class="{ 'animate-wiggle': isWrong }"
       >
         <p class="text-6xl font-extrabold md:text-7xl">
           {{ question.table }} <span :class="colors.text">×</span> {{ question.times }}
@@ -85,8 +105,7 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
           = <span class="inline-block min-w-[2.5ch] border-b-4 border-dashed border-current" :class="colors.text">{{ answer || '?' }}</span>
         </p>
         <p class="mt-3 h-9 text-2xl font-bold">
-          <span v-if="feedback === 'right'" class="text-emerald-500">🎉 Yes! Great job!</span>
-          <span v-else-if="feedback === 'wrong'" class="text-orange-500">🤔 Not quite, try again!</span>
+          <span v-if="isWrong" class="text-orange-500">🤔 Not quite, try again!</span>
         </p>
       </div>
     </div>

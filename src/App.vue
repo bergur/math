@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import { computed, nextTick, ref } from 'vue'
+import HighScores from './HighScores.vue'
 import Quiz from './Quiz.vue'
-import { SECRET_CODES, TABLES, TABLE_ANIMALS, TABLE_COLORS, isCodeFor } from './tables.ts'
+import { SECRET_CODES, TABLES, TABLE_ANIMALS, TABLE_COLORS, formatTime, isCodeFor } from './tables.ts'
 
 const LAST_TABLE = TABLES[TABLES.length - 1]
 const CONFETTI = ['⭐', '🎉', '🌈', '💖', '✨', '🎈', '🍭']
@@ -9,8 +10,11 @@ const CONFETTI = ['⭐', '🎉', '🌈', '💖', '✨', '🎈', '🍭']
 // Opened tables are only remembered until the page is reloaded, so she uses her written list of codes.
 const unlocked = ref(new Set([1]))
 const table = ref<number | null>(null)
+const isPlaying = ref(false)
+const isTimed = ref(false)
 const isFinished = ref(false)
-// Bumped on opening a table and on "Play again", so the quiz starts over with new questions.
+const finishedTimeMs = ref(0)
+// Bumped on every start, so the quiz starts over with new questions.
 const attempt = ref(0)
 // Only used on narrow screens, where the list of tables is a slide-in menu.
 const isMenuOpen = ref(false)
@@ -35,11 +39,18 @@ function openTable(chosen: number) {
   isMenuOpen.value = false
   if (!unlocked.value.has(chosen)) return openCodePopup(chosen)
   table.value = chosen
+  isPlaying.value = false
   isFinished.value = false
-  attempt.value++
 }
 
-function playAgain() {
+function finishQuiz(elapsedMs: number) {
+  isFinished.value = true
+  finishedTimeMs.value = elapsedMs
+}
+
+function startQuiz(timed: boolean) {
+  isPlaying.value = true
+  isTimed.value = timed
   isFinished.value = false
   attempt.value++
 }
@@ -120,28 +131,37 @@ async function submitCode() {
           >{{ piece.emoji }}</span>
         </div>
 
-        <p class="animate-pop text-8xl">🏆</p>
-        <h1 class="mt-4 text-4xl font-extrabold md:text-5xl">You did it!</h1>
-        <p class="mt-2 text-2xl">The table of {{ table }} is done!</p>
-
-        <template v-if="nextTable">
-          <div class="mt-8 w-full max-w-sm rounded-3xl bg-white p-6 shadow-lg">
-            <p class="text-xl">Your secret code for the <strong>table of {{ nextTable }}</strong> is:</p>
-            <p class="my-4 font-mono text-5xl font-extrabold tracking-[0.3em]" :class="colors!.text">{{ SECRET_CODES[nextTable] }}</p>
-            <p class="text-lg text-muted">✏️ Write it down!</p>
-          </div>
-          <button class="btn mt-6 text-2xl" :class="TABLE_COLORS[nextTable].button" @click="openTable(nextTable)">
-            {{ TABLE_ANIMALS[nextTable] }} Table of {{ nextTable }} ▶
-          </button>
+        <template v-if="isTimed">
+          <p class="animate-pop text-8xl">⏱️</p>
+          <h1 class="mt-4 text-4xl font-extrabold md:text-5xl">{{ formatTime(finishedTimeMs) }}</h1>
+          <HighScores :table="table" :time-ms="finishedTimeMs" />
+        </template>
+        <template v-else>
+          <p class="animate-pop text-8xl">🏆</p>
+          <h1 class="mt-4 text-4xl font-extrabold md:text-5xl">You did it!</h1>
         </template>
 
-        <p v-else class="mt-8 text-3xl font-extrabold text-violet-500">🌟 You know ALL the tables! 🌟</p>
+        <div v-if="nextTable" class="mt-8 w-full max-w-sm rounded-3xl bg-white p-6 shadow-lg">
+          <p class="text-xl">Your secret code for the <strong>table of {{ nextTable }}</strong> is:</p>
+          <p class="my-4 font-mono text-5xl font-extrabold tracking-[0.3em]" :class="colors!.text">{{ SECRET_CODES[nextTable] }}</p>
+          <p class="text-lg text-muted">✏️ Write it down!</p>
+        </div>
 
-        <button class="btn mt-4 border-slate-500 bg-slate-400" @click="playAgain">🔁 Play again</button>
+        <p v-else class="mt-8 text-3xl font-extrabold text-violet-500">🌟 You know ALL the tables! 🌟</p>
       </div>
 
       <!-- Playing a table. -->
-      <Quiz v-else :key="`${table}-${attempt}`" :table="table" @finished="isFinished = true" />
+      <Quiz v-else-if="isPlaying" :key="`${table}-${attempt}`" :table="table" :is-timed="isTimed" @finished="finishQuiz" />
+
+      <!-- Picked a table, ready to start. -->
+      <div v-else class="flex flex-col items-center text-center">
+        <p class="animate-pop text-8xl">{{ TABLE_ANIMALS[table] }}</p>
+        <h1 class="mt-2 text-5xl font-extrabold">Table of <span :class="colors!.text">{{ table }}</span></h1>
+        <div class="mt-8 flex w-full max-w-sm flex-col gap-4">
+          <button class="btn py-5 text-2xl" :class="colors!.button" @click="startQuiz(false)">Start ▶</button>
+          <button class="btn py-5 text-2xl" :class="colors!.button" @click="startQuiz(true)">⏱️ Timed mode</button>
+        </div>
+      </div>
     </main>
 
     <!-- Secret code popup for a locked table. -->
